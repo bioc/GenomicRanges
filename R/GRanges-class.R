@@ -237,12 +237,20 @@ setReplaceMethod("seqnames", "GRanges",
         }
         seqlengths <- seqlengths(x)
         if (identical(runLength(seqnames(x)), runLength(value))) {
-            matchTable <- table(runValue(seqnames(x)), runValue(value)) > 0L
-            if ((nrow(matchTable) == ncol(matchTable)) &&
-                all(rowSums(matchTable) == 1L) &&
-                all(colSums(matchTable) == 1L)) {
-                names(seqlengths) <- colnames(matchTable)[max.col(matchTable)]
-            }    
+            matchTable <-
+              unique(data.frame(old = runValue(seqnames(x)),
+                                new = runValue(value)))
+            if (!anyDuplicated(matchTable[["old"]]) &&
+                !anyDuplicated(matchTable[["new"]])) {
+                if (all.equal(as.integer(matchTable[["old"]]),
+                              as.integer(matchTable[["new"]]))) {
+                    names(seqlengths) <- levels(value)
+                } else {
+                    names(seqlengths) <-
+                        matchTable[["new"]][match(names(seqlengths),
+                                            matchTable[["old"]])]
+                }
+            }
         }
         initialize(x, seqnames = value, seqlengths = seqlengths)
     }
@@ -280,21 +288,23 @@ setReplaceMethod("strand", "GRanges",
         initialize(x, strand = value)
     }
 )
-setReplaceMethod("seqlengths", "GRanges",
-    function(x, value)
-    {
-        if (!is.integer(value)) {
-            nms <- names(value)
-            value <- as.integer(value)
-            names(value) <- nms
-        }
-        if (is.null(names(value))) {
-            names(value) <- names(seqlengths(x))
-        }
-        value <- value[names(seqlengths(x))]
-        initialize(x, seqlengths = value)
+
+replace.seqlengths <- function(x, value)
+{
+    if (!is.integer(value)) {
+        nms <- names(value)
+        value <- as.integer(value)
+        names(value) <- nms
     }
-)
+    if (is.null(names(value))) {
+        names(value) <- names(seqlengths(x))
+    }
+    value <- value[names(seqlengths(x))]
+    initialize(x, seqlengths = value)
+}
+
+setReplaceMethod("seqlengths", "GRanges", replace.seqlengths)
+
 setReplaceMethod("elementMetadata", "GRanges",
     function(x, value)
     {

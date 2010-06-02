@@ -8,8 +8,12 @@
 \alias{length,GappedAlignments-method}
 \alias{rname}
 \alias{rname,GappedAlignments-method}
+\alias{seqnames,GappedAlignments-method}
+\alias{seqlengths,GappedAlignments-method}
 \alias{rname<-}
 \alias{rname<-,GappedAlignments-method}
+\alias{seqnames<-,GappedAlignments-method}
+\alias{seqlengths<-,GappedAlignments-method}
 \alias{strand,GappedAlignments-method}
 \alias{cigar}
 \alias{cigar,GappedAlignments-method}
