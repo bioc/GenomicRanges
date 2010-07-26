@@ -183,6 +183,43 @@ setAs("RangedData", "GRanges",
     }
 )
 
+setAs("GRanges", "RangedData",
+      function(from)
+      {
+        rd <- RangedData(ranges(from), strand = strand(from),
+                         elementMetadata(from), space = seqnames(from))
+        elementMetadata(ranges(rd)) <- DataFrame(seqlengths = seqlengths(from))
+        rd
+      }
+      )
+
+setAs("RangesList", "GRanges",
+      function(from)
+      {
+        if (!length(from))
+          return(GRanges())
+        ranges <- unlist(from, use.names=FALSE)
+        GRanges(seqnames = space(from),
+                ranges = ranges,
+                strand = Rle("*", length(ranges)),
+                values = elementMetadata(ranges))
+      })
+
+setAs("GRanges", "RangesList",
+      function(from)
+      {
+        rl <- split(ranges(from), seqnames(from))
+        emd <- split(DataFrame(strand = strand(from), elementMetadata(from)),
+                     seqnames(from))
+        rl <- mseqapply(function(ranges, metadata) {
+          elementMetadata(ranges) <- metadata
+          ranges
+        }, rl, emd)
+        elementMetadata(rl) <- DataFrame(seqlengths = seqlengths(from))
+        rl
+      }
+      )
+
 setMethod("as.data.frame", "GRanges",
     function(x, row.names=NULL, optional=FALSE, ...)
     {
