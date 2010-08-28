@@ -69,8 +69,8 @@ setMethod("findOverlaps", c("GRanges", "GRanges"),
 
             if (!.similarSeqnameConvention(uniqueQuerySeqnames,
                                            uniqueSubjectSeqnames))
-                stop("'query' and 'subject' do not use a similiar naming ",
-                     "convention for seqnames")
+                warning("'query' and 'subject' do not use a similiar naming ",
+                        "convention for seqnames")
 
             commonSeqnames <-
               intersect(uniqueQuerySeqnames, uniqueSubjectSeqnames)
