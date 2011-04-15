@@ -968,6 +968,7 @@ setMethod("precede", c("GenomicRanges", "GenomicRanges"),
       if (all(as.character(strand(x)) == "*") && all(as.character(strand(subject)) == "*"))
         strand(x) <- strand(subject) <- "+"
       
+      sinfo <- merge(seqinfo(x), seqinfo(subject))
       elementMetadata(x) <- list("posIndx" = seq_len(length(x)))
       elementMetadata(subject) <- list("posIndx" = seq_len(length(subject)))
       xLst <- split(x, seqnames(x), drop = FALSE)
@@ -1038,7 +1039,8 @@ setMethod("follow", c("GenomicRanges", "GenomicRanges"),
 
         if (all(as.character(strand(x)) == "*") && all(as.character(strand(subject)) == "*"))
             strand(x) <- strand(subject) <- "+"
-        
+
+        sinfo <- merge(seqinfo(x), seqinfo(subject))
         elementMetadata(x) <- list("posIndx" = seq_len(length(x)))
         elementMetadata(subject) <- list("posIndx" = seq_len(length(subject)))
         xLst <- split(x, seqnames(x), drop = FALSE)
@@ -1139,24 +1141,9 @@ setMethod("nearest", c("GenomicRanges", "GenomicRanges"),
                     elementMetadata(subSplit)$posIndx[res]
 
                 }else if (st == "*"){
-                    subSplit1 <- s1[strand(s1) != "-"]
-                    res1 <- nearest(ranges(x1Split[[st]]), ranges(subSplit1))
-                    k1 <- elementMetadata(x1Split[[st]])$posIndx
-                    matchPos[k1] <- elementMetadata(subSplit1)$posIndx[res1]
-                    
-                    subSplit2 <- s1[strand(s1) != "+"]
-                    res2 <- nearest(ranges(x1Split[[st]]), ranges(subSplit2))
-                    k2 <- elementMetadata(x1Split[[st]])$posIndx
-                    matchPos[k2] <- elementMetadata(subSplit2)$posIndx[res2]
-
-                    mt <- k1[k1==k2]
-                    for (p in mt) {
-                       mn <- which.min( c(start(subSplit1)-end(ranges(x1Split[[st]])), 
-                           start(ranges(x1Split[[st]])) - end(subSplit2)))
-                       if (mn==1){
-                           matchPos[p] <- elementMetadata(subSplit1)$posIndx[res1]
-                       }
-                    }
+                    res <- nearest(ranges(x1Split[[st]]), ranges(s1))
+                    matchPos[elementMetadata(x1Split[[st]])$posIndx] <-
+                        elementMetadata(s1)$posIndx[res]
                 }
             }
         }              
