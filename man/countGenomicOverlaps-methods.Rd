@@ -20,7 +20,7 @@
     query, subject, 
     type = c("any", "start", "end", "within", "equal"),
     resolution = c("none", "divide", "uniqueDisjoint"),
-    junctionwt = 0.5, ignore.strand = FALSE, ...) 
+    ignore.strand = FALSE, ...) 
 }
 
 \arguments{
@@ -34,7 +34,7 @@
     each row as a single list element. If the cigar in the
     \link{GappedAlignments} has gaps, the read will be represented in
     the corresponding \link{GRangesList} object as a split read (i.e.,
-    list element of length 2).
+    list element of length 2 or greater).
   }
   \item{subject}{
     A \code{\link{GRangesList}}, or a 
@@ -59,7 +59,7 @@
 
     \itemize{
       \item "none" : No conflict resolution is performed. All queries that
-            hit more than 1 subject are dropped. No split reads are counted.
+            hit more than 1 subject are dropped.
       \item "divide" : The hit from a single query is divided equally among 
             all subjects that were hit. If a query hit 4 subjects 
             each subject is assigned 1/4 of a hit.
@@ -72,11 +72,6 @@
             \code{uniqueDisjoint} does not resolve multi-hit conflict in 
             all situations.
    }
-  }
-  \item{junctionwt}{
-    A numeric value representing the hit weight for junction reads. A junction
-    read is defined as a split read query that hits 2 features in the 
-    same gene or in different genes. The default is 0.5. 
   }
   \item{ignore.strand}{
     A logical value indicating if strand should be considered when matching.
@@ -91,17 +86,23 @@
   function in conjunction with a resolution method to identify overlaps
   and resolve queries that match multiple subjects.
   The usual \code{type} argument of \code{findOverlaps}
-  is used to specify the type of overlap. The \code{resolve}
+  is used to specify the type of overlap. The \code{resolution}
   argument is used to select a method to resolve the conflict
   when a query hits more than 1 subject. Here the
   term `hit' means an overlap identified by \code{findOverlaps}.
  
-  Split reads are handled separately from the single and multiple 
-  hit reads. If both portions of a split read hit the same subject, the
-  subject is assigned the hit. When 2 different subjects are hit
-  each is assigned the default \code{junctionwt} value of 0.5. 
-  The user can modify the value assigned to such junction reads with the
-  \code{junctionwt} argument. 
+  The primary difference in the handling of split reads vs
+  simple reads (i.e., no gap in the CIGAR) is the portion of
+  the read hit each split read fragment has to contribute.
+  All reads, whether simple or split, have an overall value
+  of 1 to contribute to a subject they hit. In the case of the
+  split reads, this value is further divided by the number of
+  fragments in the read. For example, if a split read has 3
+  fragments (i.e., two gaps in the CIGAR) each
+  fragment has a value of 1/3 to contribute to the subject
+  they hit. As with the simple reads, depending upon the
+  \code{resolution} chosen the value may be divided, fully 
+  assigned or discarded.
 
   More detailed examples can be found in the \code{countGenomicOverlaps}
   vignette. 
@@ -140,19 +141,25 @@ query <- GRangesList(a=rng1(1400, 500),
                      g=rng1(c(5400, 5600), 50),
                      h=rng1(c(6400, 6600), 50))
 
-
-## overlap type = "any"
+## Overlap type = "any"
 none <- countGenomicOverlaps(query, subj, type="any", resolution="none")
 divide <- countGenomicOverlaps(query, subj, type="any", resolution="divide")
-divide_wt <- countGenomicOverlaps(query, subj, type="any", resolution="divide",
-                                  junctionwt=5)
 uniqueDisjoint <- countGenomicOverlaps(query, subj, type="any", 
-                                       resolution="uniqueDisjoint")
+    resolution="uniqueDisjoint")
+data.frame(none = values(unlist(none))[["hits"]], 
+           divide = values(unlist(divide))[["hits"]],
+           uniqDisj = values(unlist(uniqueDisjoint))[["hits"]])
 
-res_any <- data.frame(none = values(unlist(none))[["hits"]],
-                      divide = values(unlist(divide))[["hits"]],
-                      divide_wt = values(unlist(divide_wt))[["hits"]],
-                      uniqDisj = values(unlist(uniqueDisjoint))[["hits"]])
+## Split read with 4 fragments :
+## - 2 fragments hit the same subject 
+## - 1 fragment hits two different subjects
+## - 1 fragment hits a single subject 
+splitreads <- GRangesList(c(rng1(c(3000, 3200, 4000), 100), rng1(5400, 300)))
+split_none <- countGenomicOverlaps(splitreads, subj, type="any")
+split_divide <- countGenomicOverlaps(splitreads, subj, type="any", 
+    resolution="divide")
+data.frame(none = values(unlist(split_none))[["hits"]],
+           divide = values(unlist(split_divide))[["hits"]])
 
 }
 
