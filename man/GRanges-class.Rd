@@ -314,12 +314,13 @@
             into a list with \code{split(shift, as.factor(seqnames(x)))},
             and finally the elements of this list are passed into the
             \code{coverage} method for \link[IRanges]{IRanges} objects.
-      \item \code{width}: can be a list (that should be named by the
-            sequence levels in \code{x}) or \code{NULL} (in that case it is
-            equivalent to \code{as.list(seqlengths(x))}). Like for \code{shift}
-            and \code{weight}, its elements are passed into the \code{coverage}
-            method for \link[IRanges]{IRanges} objects (elements that are
-            single \code{NA}s are replaced by \code{NULL}).
+      \item \code{width}: can be either \code{NULL} or a numeric vector.
+            If a numeric vector, then it should be named by the sequence
+            levels in \code{x}. If \code{NULL} (the default), then it is
+            replaced with \code{seqlengths(x)}. Like for \code{shift} and
+            \code{weight}, its elements are passed into the \code{coverage}
+            method for \link[IRanges]{IRanges} objects (if the element is
+            \code{NA} then \code{NULL} is passed instead).
       }
     }
   }
@@ -411,8 +412,8 @@
     \item{}{
       \code{seqselect(x, start=NULL, end=NULL, width=NULL) <- value}:
       Similar to \code{window<-}, except that multiple consecutive subsequences
-      can be replaced by a \code{value} whose length is a divisor of the number
-      of elements it is replacing. As such two of the three \code{start},
+      can be replaced with a \code{value} whose length is a divisor of the
+      number of elements it is replacing. As such two of the three \code{start},
       \code{end}, and \code{width} arguments can be used to specify the
       consecutive subsequences. Alternatively, \code{start} can take a Ranges
       object or something that can be converted to a Ranges object like an

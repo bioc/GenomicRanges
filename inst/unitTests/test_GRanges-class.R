@@ -294,7 +294,7 @@ test_GRanges_Ranges <- function() {
                    RleList("chr1" = Rle(1:3, c(4, 1, 5)),
                            "chr2" = Rle(0:3, c(1, 1, 1, 7)),
                            "chr3" = Rle(0:4, c(6, 1, 1, 1, 1))))
-    checkIdentical(coverage(gr, width = list(10, 20, 30)),
+    checkIdentical(coverage(gr, width = c(10, 20, 30)),
                    RleList("chr1" = Rle(1:3, c(4, 1, 5)),
                            "chr2" = Rle(c(0:3, 0L), c(1, 1, 1, 7, 10)),
                            "chr3" = Rle(c(0:4, 0L), c(6, 1, 1, 1, 1, 20))))
