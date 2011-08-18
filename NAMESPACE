@@ -51,6 +51,7 @@ exportMethods(
     flank, resize, shift,
     disjoin, gaps, range, reduce,
     coverage,
+    duplicated, unique, order, sort, rank, "==", "<=", ">=", "<", ">",
     union, intersect, setdiff,
     punion, pintersect, psetdiff,
     findOverlaps, countOverlaps, match, "%in%",
