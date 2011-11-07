@@ -73,6 +73,7 @@ setMethod("keepSeqlevels",  c("GRangesList", "character"),
     grlReduced <- GenomicRanges:::reconstructGRLfromGR(grReduced, x)
 
     seqlevels(grlReduced) <- seqlevels(x)[seqlevels(x) %in% value]
+    metadata(grlReduced) <- metadata(x) 
     grlReduced[elementLengths(grlReduced) != 0] 
 })
 
@@ -139,18 +140,4 @@ setMethod("renameSeqlevels",  c("GRangesList", "character"),
 setMethod("renameSeqlevels",  c("GenomicRanges", "character"),
     function(x, value, ...) .renameSeqlevels(x, value, ...)
 )
-
-.SubsetGRListAtRangesLevel <- function(grl, idx, ...)
-{
-    if (is.character(idx)) {
-        orig <- idx
-        idx <- match(idx, names(grl@unlistData))
-    }
-    grReduced <-
-        GenomicRanges:::deconstructGRLintoGR(grl)[idx,,drop=FALSE]
-    grlReduced <-
-        GenomicRanges:::reconstructGRLfromGR(grReduced, grl)
-    grlReduced[elementLengths(grlReduced) != 0]
-}
-
 
