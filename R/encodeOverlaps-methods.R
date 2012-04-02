@@ -4,27 +4,80 @@
 
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### 2 non-exported utilities for inverting the strand of an object.
+###
+### TODO: We should probably have an invertStrand() generic with methods for
+### GRanges, GRangesList, GappedAlignments, GappedAlignmentPairs, and possibly
+### more, instead of this.
+
+### Works on GRanges and GappedAlignments objects. More generally, it should
+### work on any object that has: (1) a strand() getter that returns a
+### 'factor'-Rle, and (2) a strand() setter.
+invertRleStrand <- function(x)
+{
+    x_strand <- strand(x)
+    runValue(x_strand) <- strand(runValue(x_strand) == "+")
+    strand(x) <- x_strand
+    x
+}
+
+invertRleListStrand <- function(x)
+{
+    x@unlistData <- invertRleStrand(x@unlistData)
+    x
+}
+
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### flipQuery()
+###
+
+flipQuery <- function(x)
+{
+    if (!is(x, "GRangesList"))
+        stop("'x' must be a GRangesList object")
+    ans <- invertRleListStrand(revElements(x))
+    x_query.break <- elementMetadata(x)$query.break
+    if (!is.null(x_query.break))
+        elementMetadata(ans)$query.break <- elementLengths(x) - x_query.break
+    ans
+}
+
+
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Should we use a generic + methods for this?
 ###
 
-.get_GRanges_spaces <- function(x, ignore.strand=FALSE)
+### 'use.negative.space.for.minus.strand' is ignored if 'ignore.strand'
+### is TRUE.
+.get_GRanges_spaces <- function(x, ignore.strand=FALSE,
+                                use.negative.space.for.minus.strand=FALSE)
 {
         if (!isTRUEorFALSE(ignore.strand))
             stop("'ignore.strand' must be TRUE or FALSE")
         ans <- as.integer(seqnames(x))
         if (!ignore.strand) {
-            strand <- as.integer(strand(x))
-            ans <- ans * 3L + strand
+            x_strand <- as.integer(strand(x))
+            ans <- ans * 3L + x_strand
+            if (use.negative.space.for.minus.strand) {
+                is_minus <- which(x_strand == as.integer(strand("-")))
+                ans[is_minus] <- - ans[is_minus]
+            }
         }
         ans
 }
 
-.get_GRangesList_spaces <- function(x, ignore.strand=FALSE)
+### 'use.negative.space.for.minus.strand' is ignored if 'ignore.strand'
+### is TRUE.
+.get_GRangesList_spaces <- function(x, ignore.strand=FALSE,
+                                    use.negative.space.for.minus.strand=FALSE)
 {
         if (!isTRUEorFALSE(ignore.strand))
             stop("'ignore.strand' must be TRUE or FALSE")
         unlisted_ans <- .get_GRanges_spaces(x@unlistData,
-                                            ignore.strand=ignore.strand)
+                            ignore.strand=ignore.strand,
+                            use.negative.space.for.minus.strand=
+                                use.negative.space.for.minus.strand)
         as.list(relist(unlisted_ans, x))
 }
 
@@ -57,8 +110,9 @@ setMethod("encodeOverlaps", c("GRanges", "GRanges", "missing"),
 )
 }
 
-GRangesList_encodeOverlaps <- function(query, subject, Lquery.lengths=NULL,
-                                       ignore.strand=FALSE)
+.GRangesList_encodeOverlaps <- function(query, subject, ignore.strand=FALSE,
+                                   query.breaks=NULL,
+                                   use.negative.space.for.minus.strand=FALSE)
 {
     seqinfo <- merge(seqinfo(query), seqinfo(subject))
     seqlevels(query) <- seqlevels(subject) <- seqlevels(seqinfo)
@@ -67,33 +121,53 @@ GRangesList_encodeOverlaps <- function(query, subject, Lquery.lengths=NULL,
                               as.list(start(subject)),
                               as.list(width(subject)),
                               query.spaces=.get_GRangesList_spaces(query,
-                                      ignore.strand=ignore.strand),
+                                      ignore.strand=ignore.strand,
+                                      use.negative.space.for.minus.strand=
+                                          use.negative.space.for.minus.strand),
                               subject.spaces=.get_GRangesList_spaces(subject,
-                                      ignore.strand=ignore.strand),
-                              Lquery.lengths=Lquery.lengths)
+                                      ignore.strand=ignore.strand,
+                                      use.negative.space.for.minus.strand=
+                                          use.negative.space.for.minus.strand),
+                              query.breaks=query.breaks)
 }
 
 setMethod("encodeOverlaps", c("GRangesList", "GRangesList", "missing"),
-    function(query, subject, hits=NULL, ignore.strand=FALSE)
-        GRangesList_encodeOverlaps(query, subject,
-                                   ignore.strand=ignore.strand)
+    function(query, subject, hits=NULL)
+        .GRangesList_encodeOverlaps(query, subject,
+                             query.breaks=elementMetadata(query)$query.break,
+                             use.negative.space.for.minus.strand=TRUE)
 )
 
-setMethod("encodeOverlaps", c("GappedAlignments", "GRangesList", "missing"),
-    function(query, subject, hits=NULL, ignore.strand=FALSE)
-        GRangesList_encodeOverlaps(as(query, "GRangesList"), subject,
-                                   ignore.strand=ignore.strand)
-)
 
-setMethod("encodeOverlaps", c("GappedAlignmentPairs", "GRangesList", "missing"),
-    function(query, subject, hits=NULL, ignore.strand=FALSE)
-    {
-        Lquery.lengths <- 1L + ngap(left(query))
-        GRangesList_encodeOverlaps(as(query, "GRangesList"), subject,
-                                   Lquery.lengths=Lquery.lengths,
-                                   ignore.strand=ignore.strand)
+### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+### selectEncodingWithCompatibleStrand().
+###
+
+selectEncodingWithCompatibleStrand <- function(x, y,
+                                               query.strand, subject.strand,
+                                               hits=NULL)
+{
+    if (!is(x, "OverlapEncodings"))
+        stop("'x' must be an OverlapEncodings object")
+    if (!is(y, "OverlapEncodings"))
+        stop("'y' must be an OverlapEncodings object")
+    if (!is.null(hits)) {
+        if (!is(hits, "Hits"))
+            stop("'hits' must be a Hits object or NULL")
+        query.strand <- query.strand[queryHits(hits)]
+        subject.strand <- subject.strand[subjectHits(hits)]
     }
-)
+    ans <- x
+    names(ans) <- NULL
+    elementMetadata(ans) <- NULL
+    idx <- which(query.strand != subject.strand)
+    ans@Loffset[idx] <- y@Roffset[idx]
+    ans@Roffset[idx] <- y@Loffset[idx]
+    ans_encoding <- as.character(ans@encoding)
+    ans_encoding[idx] <- as.character(y@encoding[idx])
+    ans@encoding <- as.factor(ans_encoding)
+    ans
+}
 
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

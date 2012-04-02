@@ -38,6 +38,7 @@ setClass("GappedAlignmentPairs",
 ###   strand(x)   - same as 'strand(first(x))' (opposite of 'strand(last(x))').
 ###   isProperPair(x) - returns "isProperPair" slot.
 ###   seqinfo(x)  - returns 'seqinfo(first(x))' (same as 'seqinfo(last(x))').
+###   grglist(x)  - GRangesList object of the same length as 'x'.
 ###   show(x)     - compact display in a data.frame-like fashion.
 ###   GappedAlignmentPairs(x) - constructor.
 ###   x[i]        - GappedAlignmentPairs object of the same class as 'x'
@@ -70,7 +71,7 @@ setMethod("first", "GappedAlignmentPairs",
             stop("'invert.strand' must be TRUE or FALSE")
         ans <- setNames(x@first, names(x))
         if (invert.strand)
-            strand(ans) <- strand(strand(ans) == "+")
+            ans <- invertRleStrand(ans)
         ans
     }
 )
@@ -82,7 +83,7 @@ setMethod("last", "GappedAlignmentPairs",
             stop("'invert.strand' must be TRUE or FALSE")
         ans <- setNames(x@last, names(x))
         if (invert.strand)
-            strand(ans) <- strand(strand(ans) == "+")
+            ans <- invertRleStrand(ans)
         ans
     }
 )
@@ -91,12 +92,7 @@ setMethod("left", "GappedAlignmentPairs",
     function(x, ...)
     {
         x_first <- x@first
-        x_last <- x@last
-
-        ## Invert 'x_last' strand.
-        last_strand <- strand(x_last)
-        runValue(last_strand) <- strand(runValue(last_strand) == "+")
-        strand(x_last) <- last_strand
+        x_last <- invertRleStrand(x@last)
 
         left_is_last <- which(strand(x_first) == "-")
         idx <- seq_len(length(x))
@@ -111,12 +107,7 @@ setMethod("right", "GappedAlignmentPairs",
     function(x, ...)
     {
         x_first <- x@first
-        x_last <- x@last
-
-        ## Invert 'x_last' strand.
-        last_strand <- strand(x_last)
-        runValue(last_strand) <- strand(runValue(last_strand) == "+")
-        strand(x_last) <- last_strand
+        x_last <- invertRleStrand(x@last)
 
         right_is_first <- which(strand(x_first) == "-")
         idx <- seq_len(length(x))
@@ -354,7 +345,8 @@ setMethod("[[", "GappedAlignmentPairs",
 .makePickupIndex <- function(N)
 {
     ans <- rep(seq_len(N), each=2L)
-    ans[c(FALSE, TRUE)] <- ans[c(FALSE, TRUE)] + N
+    if (length(ans) != 0L)
+        ans[c(FALSE, TRUE)] <- ans[c(FALSE, TRUE)] + N
     ans
 }
 
@@ -379,26 +371,59 @@ setMethod("unlist", "GappedAlignmentPairs",
 ### Coercion.
 ###
 
-### FIXME: as(galp[FALSE], "GRangesList") is broken!
-setAs("GappedAlignmentPairs", "GRangesList",
-    function(from)
+### Shrink CompressedList 'x' (typically a GRangesList) by half by combining
+### pairs of consecutive top-level elements.
+.shrinkByHalf <- function(x)
+{
+    if (length(x) %% 2L != 0L)
+        stop("'x' must have an even length")
+    x_elt_lens <- elementLengths(x)
+    if (length(x_elt_lens) == 0L) {
+        ans_nelt1 <- ans_nelt2 <- integer(0)
+    } else {
+        ans_nelt1 <- x_elt_lens[c(TRUE, FALSE)]
+        ans_nelt2 <- x_elt_lens[c(FALSE, TRUE)]
+    }
+    ans_elt_lens <- ans_nelt1 + ans_nelt2
+    ans_skeleton <- PartitioningByWidth(ans_elt_lens)
+    ans <- relist(x@unlistData, skeleton=ans_skeleton)
+    elementMetadata(ans) <- DataFrame(nelt1=ans_nelt1, nelt2=ans_nelt2)
+    ans
+}
+
+setMethod("grglist", "GappedAlignmentPairs",
+    function(x, order.as.in.query=FALSE, drop.D.ranges=FALSE)
     {
-        Lfrom <- unname(left(from))
-        Rfrom <- unname(right(from))
-        ## Not the same as doing 'unlist(from, use.names=FALSE)'.
-        unlisted <- c(Lfrom, Rfrom)[.makePickupIndex(length(from))]
-        grl <- as(unlisted, "GRangesList")
-        grl_elt_lens <- elementLengths(grl)
-        ans_elt_lens <- grl_elt_lens[c(TRUE, FALSE)] +
-                        grl_elt_lens[c(FALSE, TRUE)]
-        grl_unlisted <- unlist(grl, use.names=FALSE)
-        skeleton <- PartitioningByWidth(ans_elt_lens)
-        ans <- relist(grl_unlisted, skeleton=skeleton)
-        names(ans) <- names(from)
-        elementMetadata(ans) <- elementMetadata(from)
+        if (!isTRUEorFALSE(order.as.in.query))
+            stop("'reorder.ranges.from5to3' must be TRUE or FALSE")
+        x_elt_metadata <- elementMetadata(x)
+        if ("query.break" %in% colnames(x_elt_metadata))
+            stop("'elementMetadata(x)' cannot have ",
+                 "reserved column \"query.break\"")
+        x_first <- x@first
+        x_last <- invertRleStrand(x@last)
+        ## Not the same as doing 'unlist(x, use.names=FALSE)'.
+        x_unlisted <- c(x_first, x_last)[.makePickupIndex(length(x))]
+        grl <- grglist(x_unlisted,
+                       order.as.in.query=TRUE,
+                       drop.D.ranges=drop.D.ranges)
+        ans <- .shrinkByHalf(grl)
+        ans_nelt1 <- elementMetadata(ans)$nelt1
+        if (!order.as.in.query) {
+            ans_nelt2 <- elementMetadata(ans)$nelt2
+            ## Yes, we reorder *again* when 'order.as.in.query' is FALSE.
+            i <- which(strand(x) == "-")
+            ans <- revElements(ans, i)
+            ans_nelt1[i] <- ans_nelt2[i]
+        }
+        names(ans) <- names(x)
+        x_elt_metadata$query.break <- ans_nelt1
+        elementMetadata(ans) <- x_elt_metadata
         ans
     }
 )
+
+setAs("GappedAlignmentPairs", "GRangesList", function(from) grglist(from))
 
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
