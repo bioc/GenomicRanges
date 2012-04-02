@@ -86,6 +86,9 @@ SIGNIFICANT USER-LEVEL CHANGES
       objects now set the strand of their arguments to "*" prior to any
       computation.
 
+    o No more mangling of the names when combining GRanges objects ("c" method
+      for GRanges objects was trying to return unique names).
+
     o Remove isCircularWithKnownLength() generic and methods (nobody knows,
       uses, or needs this).
 
