@@ -153,8 +153,9 @@ setMethod("keepSeqlevels",  c("GappedAlignments", "character"),
         warning("seqlevels ", paste(old[str], collapse=", "), 
                 " not found in 'x'")
     }
-    seqlevels(x)[seqlevels(x) %in% old[str == FALSE]] <- new[str == FALSE]
-    x 
+    ord <- match(old[str == FALSE], seqlevels(x))
+    seqlevels(x)[ord] <- new[str == FALSE]
+    x
 }
 
 setGeneric("renameSeqlevels", signature = c("x", "value"),
