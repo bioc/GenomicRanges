@@ -27,15 +27,15 @@
 \description{
   \code{encodeOverlaps} methods and related utilities.
 
-  WARNING: This man page is incomplete and was still a WORK IN PROGRESS
-  at the time GenomicRanges 1.8 was released (as part of Bioconductor 2.10,
-  released in April 2012). All the work on "overlap encodings" is now happening
-  in the \emph{devel} version of the GenomicRanges package (GenomicRanges 1.9
-  part of Bioconductor 2.11, at the time of this writing). To use "overlap
-  encodings" and related tools, and to get an updated version of the
-  "Overlap encodings" vignette, it is \emph{strongly} recommended that you use
-  Bioconductor 2.11. In particular please make sure that you always use the
-  \emph{latest} version of the GenomicRanges package (version 1.9.14 at the
+  WARNING (May 8, 2012): This man page is incomplete and was still a WORK IN
+  PROGRESS at the time GenomicRanges 1.8 was released (as part of Bioconductor
+  2.10, released in April 2012). All the work on "overlap encodings" is now
+  happening in the \emph{devel} version of the GenomicRanges package
+  (GenomicRanges 1.9, part of Bioconductor 2.11, at the time of this writing).
+  To use "overlap encodings" and related tools, and to get an updated version
+  of the "Overlap encodings" vignette, it is \emph{strongly} recommended that
+  you use Bioconductor 2.11. In particular please make sure that you always use
+  the \emph{latest} version of the GenomicRanges package (version 1.9.14 at the
   time of this writing, expect frequent updates).
 
   In other words, this man page is superseded by the man page found in

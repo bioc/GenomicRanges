@@ -34,28 +34,20 @@
 <<options,echo=FALSE>>=
 options(width=100)
 @
-\tableofcontents
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Introduction}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{center}
-\begin{minipage}{0.80\textwidth}
-WARNING: This vignette is incomplete and was still a WORK IN PROGRESS
-at the time \Rpackage{GenomicRanges} 1.8 was released (as part of Bioconductor
-2.10, released in April 2012). All the work on {\it overlap encodings} is now
-happening in the {\bf devel} version of the \Rpackage{GenomicRanges} package
-(\Rpackage{GenomicRanges} 1.9, part of Bioconductor 2.11, at the time of this
-writing). To use {\it overlap encodings} and related tools, and to get an
-updated version of this vignette, it is {\bf strongly} recommended that you use
-Bioconductor 2.11. In particular please make sure that you always use the
-{\bf latest} version of the \Rpackage{GenomicRanges} package (version 1.9.14
-at the time of this writing, expect frequent updates).
+\begin{minipage}{0.8\textwidth}
+WARNING (May 8, 2012): This vignette is incomplete and was still a WORK IN
+PROGRESS at the time \Rpackage{GenomicRanges} 1.8 was released (as part of
+Bioconductor 2.10, released in April 2012). All the work on {\it overlap
+encodings} is now happening in the {\bf devel} version of the
+\Rpackage{GenomicRanges} package (\Rpackage{GenomicRanges} 1.9, part of
+Bioconductor 2.11, at the time of this writing). To use {\it overlap encodings}
+and related tools, and to get an updated version of this vignette, it is
+{\bf strongly} recommended that you use Bioconductor 2.11. In particular please
+make sure that you always use the {\bf latest} version of the
+\Rpackage{GenomicRanges} package (version 1.9.14 at the time of this writing,
+expect frequent updates).
 
 In other words, this vignette is superseded by the vignette found in
 \Rpackage{GenomicRanges} 1.9 (part of Bioconductor 2.11). It won't be updated.
@@ -67,6 +59,17 @@ See \Rcode{?biocLite} in the \Rpackage{BiocInstaller} package for how to update
 all the installed packages.
 \end{minipage}
 \end{center}
+
+\tableofcontents
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 In the context of an RNA-seq experiment, encoding the overlaps between
 the aligned reads and the transcripts can be used for detecting those
