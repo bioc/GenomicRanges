@@ -54,12 +54,14 @@
 \alias{range,GenomicRanges-method}
 \alias{reduce,GenomicRanges-method}
 \alias{precede,GenomicRanges,GenomicRanges-method}
-\alias{follow,GenomicRanges,GenomicRanges-method}
 \alias{precede,GenomicRanges,missing-method}
+\alias{follow,GenomicRanges,GenomicRanges-method}
 \alias{follow,GenomicRanges,missing-method}
 \alias{isDisjoint,GenomicRanges-method}
 \alias{disjointBins,GenomicRanges-method}
 \alias{restrict,GenomicRanges-method}
+\alias{nearest,GenomicRanges,GenomicRanges-method}
+\alias{nearest,GenomicRanges,missing-method}
 \alias{distance,GenomicRanges,GenomicRanges-method}
 
 % Vector methods:
@@ -347,6 +349,79 @@
   }
 }
 
+\section{Other ranges utilities}{
+
+  In the code snippets below, \code{x} and \code{subject} are GRanges objects.
+  \describe{
+    \item{}{
+      \code{precede(x, subject = x, select = c("arbitrary", "all"), ignore.strand = FALSE, ...)}:
+      Identifies which subject(s) the query precedes. Returns the index of the
+      range in \code{subject} that is directly preceded by the range in
+      \code{x}. When ignore.strand = TRUE, the strand for both \code{x} and
+      \code{subject} are set to \code{'+'}.
+
+      When \code{select = 'arbitrary'} an integer vector is returned with a
+      single match per \code{x}. If no match is found an \code{NA} is returned.
+      When \code{select = 'all'} a \code{Hits} object is returned with all
+      matches for \code{x}. If \code{x} does not have a match in \code{subject}
+      the \code{x} is not included in the \code{Hits} object. Overlapping
+      ranges are excluded.
+
+      Matching by strand :
+      \itemize{
+        \item{}{x on '+' strand can match to ranges on both \code{'+'} and
+          \code{'*'} strands. In the case of a tie the first range by order
+          is chosen.
+        }
+        \item{}{x on '-' strand can match to ranges on both \code{'-'} and
+          \code{'*'} strands. In the case of a tie the first range by order
+          is chosen.
+        }
+        \item{}{x on '*' strand can match to ranges on any of \code{'+'},
+          \code{'-'} or \code{'*'} strands. In the case of a tie the first
+          range by order is chosen.
+        }
+      }
+    }
+    \item{}{
+      \code{follow(x, subject = x, select = c("arbitrary", "all"), ignore.strand = FALSE, ...)}:
+      Identifies which subject(s) the query follows. Returns the index of the
+      interval in \code{subject} that is directly followed by the range in
+      \code{x}. When ignore.strand = TRUE, both \code{x} and \code{subject}
+      strand are set to \code{'+'}.
+
+      When \code{select = 'arbitrary'} an integer vector is returned with a
+      single match per \code{x}. If no match is found an \code{NA} is returned.
+      When \code{select = 'all'} a \code{Hits} object is returned with all
+      matches for \code{x}. If \code{x} does not have a match in \code{subject}
+      the \code{x} is not included in the \code{Hits} object. Overlapping
+      ranges are excluded. See the documentation for \code{precede} for details
+      of strand matching.
+    }
+    \item{}{
+      \code{nearest(x, subject = x, ignore.strand = FALSE)}:
+      Conventional nearest neighbor finder which returns an integer vector
+      containing the index of the nearest neightbor range in \code{subject}
+      for each range in \code{x}. If there is no nearest neighbor \code{NA}
+      is returned. See the \code{nearest} man page in \code{IRanges} for
+      a description of the algorithm used.
+
+      If ignore.strand = TRUE, both \code{x} and \code{subject} strand are
+      set to \code{"+"}. \code{nearest} calls \code{precede} and \code{follow}
+      and thus the strand matching for \code{*} follows the conventions
+      documented under those functions.
+    }
+    \item{}{
+      \code{distanceToNearest(x, subject, ignore.strand = FALSE)}:
+      Returns the distance for each range in \code{x} to its nearest
+      neighbor in the \code{subject}.
+
+      If ignore.strand = TRUE, both \code{x} and \code{subject} strand are
+      set to \code{"+"}.
+    }
+  }
+}
+
 \section{Splitting and Combining}{
   In the code snippets below, \code{x} is a GRanges object.
 
@@ -530,7 +605,7 @@
   range(gr)
   reduce(gr)
   restrict(gr, start =3)
-  
+ 
   # Combining objects
   gr2 <- GRanges(seqnames=Rle(c('Chrom1', 'Chrom2', 'Chrom3'), c(3, 3, 4)),
                  IRanges(1:10, width=5), strand='-',
@@ -539,7 +614,27 @@
                  IRanges(101:110, width=10), strand='-',
                  score=21:30)
   some.gr <- c(gr, gr2)
-  
+ 
   ## all.gr <- c(gr, gr2, gr3) ## (This would fail)
   all.gr <- c(gr, gr2, gr3, .ignoreElementMetadata=TRUE)
+
+  # precede and follow :
+  # query on "+" strand
+  query <- GRanges("A", IRanges(c(5, 20), width=1), strand="+")
+  subject <- GRanges("A", IRanges(rep(c(10, 15), 2), width=1),
+                     strand=c("+", "+", "-", "-"))
+  precede(query, subject)
+  follow(query, subject)
+
+  # query on "+" strand
+  strand(query) <- "-"
+  precede(query, subject)
+  follow(query, subject)
+
+  # ties choose first in order
+  query <- GRanges("A", IRanges(10, width=1), c("+", "-", "*"))
+  subject <- GRanges("A", IRanges(c(5, 5, 5, 15, 15, 15), width=1),
+                       rep(c("+", "-", "*"), 2))
+  precede(query, subject)
+  precede(query, rev(subject))
 }

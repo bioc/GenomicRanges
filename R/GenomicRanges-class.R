@@ -515,7 +515,7 @@ setMethod("resize", "GenomicRanges",
         if (ignore.strand) {
             fix <- Rle(rep.int(fix, length(x)))
         } else {
-            revFix <- c(start="end", end="start", center="center")       
+            revFix <- c(start="end", end="start", center="center") 
             fix <- ifelse(strand(x) == "-", revFix[fix], fix)
         }
         ranges <-
@@ -750,14 +750,14 @@ setMethod("c", "GenomicRanges",
         ans_seqnames <- do.call(c, lapply(args, seqnames))
         ans_ranges <- do.call(c, lapply(args, ranges))
         ans_strand <- do.call(c, lapply(args, strand))
-        
+ 
         if (.ignoreElementMetadata) {
           ans_elementMetadata <- new("DataFrame", nrows=length(ans_ranges))
         } else {
           ans_elementMetadata <- do.call(rbind,
                                          lapply(args, elementMetadata, FALSE))
         }
-        
+
         ans_names <- names(ans_ranges)
         clone(x,
               seqnames=ans_seqnames,
@@ -920,39 +920,195 @@ setMethod("show", "GenomicRanges",
 ###
 
 setMethod("precede", c("GenomicRanges", "GenomicRanges"),
-    function(x, subject, ignore.strand=FALSE, ...)
+    function(x, subject, select = c("arbitrary", "all"), 
+             ignore.strand=FALSE, ...)
     {
-        .findRanges(x, subject, ignore.strand, type="precede", ...) 
+        select <- match.arg(select)
+        .findPrecedeFollow_GRanges(x, subject, select, ignore.strand, 
+            "precede", ...) 
     }
 )
 
 setMethod("precede", c("GenomicRanges", "missing"),
-    function(x, subject, ignore.strand=FALSE, ...)
+    function(x, subject, select = c("arbitrary", "all"), 
+             ignore.strand=FALSE, ...)
     {
-        callGeneric(x, subject=x, ignore.strand=ignore.strand, ...) 
+        callGeneric(x, subject=x, select=select, ignore.strand=ignore.strand, 
+            ...) 
     }
 )
 
 setMethod("follow", c("GenomicRanges", "GenomicRanges"),
-    function(x, subject, ignore.strand=FALSE, ...)
+    function(x, subject, select = c("arbitrary", "all"), 
+             ignore.strand=FALSE, ...)
     {
-        .findRanges(x, subject, ignore.strand, type="follow", ...) 
+        select <- match.arg(select)
+        .findPrecedeFollow_GRanges(x, subject, select, ignore.strand, 
+            "follow", ...) 
     }
 )
 
 setMethod("follow", c("GenomicRanges", "missing"),
-    function(x, subject, ignore.strand=FALSE, ...)
+    function(x, subject, select=c("arbitrary", "all"), ignore.strand=FALSE, ...)
     {
-        callGeneric(x, subject=x, ignore.strand=ignore.strand, ...) 
+        callGeneric(x, subject=x, select=select, ignore.strand=ignore.strand, 
+            ...) 
     }
 )
 
-setMethod("nearest", c("GenomicRanges", "GenomicRanges"),
-    function(x, subject, ignore.strand=FALSE, ...)
-    {
-        .findRanges(x, subject, ignore.strand, type="nearest", ...) 
+.orderNumeric <- function(x)            # unstable order
+    sort.list(x, na.last=NA, method="quick")
+
+.Hits <-
+    function(queryHits, subjectHits,
+             queryLength=as.integer(max(c(0, queryHits))),
+             subjectLength=as.integer(max(c(0, subjectHits))))
+{
+    o <- IRanges:::orderIntegerPairs(queryHits, subjectHits)
+    new("Hits", queryHits=queryHits[o], subjectHits=subjectHits[o],
+        queryLength=queryLength, subjectLength=subjectLength)
+}
+
+.findNearest0_GRanges <-
+    function (query, subject, sentinel, leftOf=TRUE)
+    ## query 'leftOf' subject
+{
+    sentinelidx <- length(subject) + seq_along(sentinel)
+    subject <- c(subject, sentinel)
+
+    ord <- .orderNumeric(subject)
+    subject <- subject[ord]
+
+    rle <- Rle(subject)
+    subject <- runValue(rle)
+
+    i <- findInterval(query - !leftOf, subject) + leftOf
+    i[subject[i] %in% sentinel] <- NA_integer_
+ 
+    IRanges:::.vectorToHits(i, rle, ord)
+}
+
+.findNearest_distance <-
+    function(hit, query, subject, leftOf=TRUE)
+    ## query 'leftOf' of subject
+{
+    if (leftOf)
+        start(subject)[subjectHits(hit)] - end(query)[queryHits(hit)]
+    else
+        start(query)[queryHits(hit)] - end(subject)[subjectHits(hit)]
+}
+
+.findPrecedeFollow_pmin <-
+    function(hit0, dist0, hit1, dist1)
+    ## hit0, hit1 are (possibly multiple) hits on same query; repeated
+    ## hits are equidistant within hit0 or hit1, but not necessarily
+    ## between
+{
+    stopifnot(queryLength(hit0) == queryLength(hit1))
+    stopifnot(subjectLength(hit0) == subjectLength(hit1))
+    stopifnot(length(hit0) == length(dist0) ||
+        length(hit1) == length(dist1))
+
+    n <- queryLength(hit0)
+    d0 <- d1 <- integer()
+    d0[n] <- d1[n] <- NA_integer_
+
+    i0 <- queryHits(hit0)
+    i1 <- queryHits(hit1)
+
+    d0[i0] <- dist0
+    d1[i1] <- dist1
+
+    dMin <- pmin.int(d0, d1, na.rm=TRUE)
+    i0 <- dist0 == dMin[i0]
+    i1 <- dist1 == dMin[i1]
+
+    .Hits(c(queryHits(hit0)[i0], queryHits(hit1)[i1]),
+        c(subjectHits(hit0)[i0], subjectHits(hit1)[i1]),
+        queryLength(hit0), subjectLength(hit0))
+}
+
+.findPrecedeFollow_GRanges <-
+    function(query, subject, select, ignore.strand, 
+             where=c("precede", "follow"))
+{
+    leftOf <- "precede" == match.arg(where)
+    if (ignore.strand)
+        strand(x) <- strand(subject) <- "+"
+
+    if (leftOf) {
+        plusfun <- function(xstart, xend, ystart, yend, sentinel)
+            .findNearest0_GRanges(xend, ystart, sentinel, leftOf)
+        minusfun <- function(xstart, xend, ystart, yend, sentinel)
+            .findNearest0_GRanges(xstart, yend, sentinel, !leftOf)
+    } else {
+        plusfun <- function(xstart, xend, ystart, yend, sentinel)
+            .findNearest0_GRanges(xstart, yend, sentinel, leftOf)
+        minusfun <- function(xstart, xend, ystart, yend, sentinel)
+            .findNearest0_GRanges(xend, ystart, sentinel, !leftOf)
     }
-)
+
+    ## sentinels marking seqlevels ends
+    maxend <- max(max(end(query)), max(end(subject))) + 1
+    lvls <- union(seqlevels(query), seqlevels(subject))
+    offset <- setNames((seq_along(lvls) - 1) * maxend, lvls)
+    stopifnot(typeof(offset) == "double")      # avoid integer overflow
+    sentinel <- c(0, seq_along(lvls) * maxend)
+
+    ## offset for sentinels
+    queryOff <- unname(offset[as.character(seqnames(query))])
+    queryStart <- start(query) + queryOff
+    queryEnd <- end(query) + queryOff
+    qid <- seq_along(query)
+
+    subjectOff <- unname(offset[as.character(seqnames(subject))])
+    subjectStart <- start(subject) + subjectOff
+    subjectEnd <- end(subject) + subjectOff
+    spid <- which(strand(subject) != "-")
+    smid <- which(strand(subject) != "+")
+
+    ## '+' query
+    idx <- which(strand(query) == "+")
+    phit <- plusfun(queryStart[idx], queryEnd[idx],
+        subjectStart[spid], subjectEnd[spid], sentinel)
+    phit <- .Hits(qid[idx][queryHits(phit)], spid[subjectHits(phit)])
+
+    ## '-' query
+    idx <- which(strand(query) == "-")
+    mhit <- minusfun(queryStart[idx], queryEnd[idx],
+        subjectStart[smid], subjectEnd[smid], sentinel)
+    mhit <- .Hits(qid[idx][queryHits(mhit)], smid[subjectHits(mhit)])
+
+    ## '*' query
+    idx <- which(strand(query) == "*")
+    bhit <- local({
+        qid <- qid[idx]
+        phit <- plusfun(queryStart[idx], queryEnd[idx],
+            subjectStart[spid], subjectEnd[spid], sentinel)
+        phit <- .Hits(qid[queryHits(phit)], spid[subjectHits(phit)],
+            length(query), length(subject))
+        mhit <- minusfun(queryStart[idx], queryEnd[idx],
+            subjectStart[smid], subjectEnd[smid], sentinel)
+        mhit <- .Hits(qid[queryHits(mhit)], smid[subjectHits(mhit)],
+            length(query), length(subject))
+        pdist <- .findNearest_distance(phit, query, subject, leftOf)
+        mdist <- .findNearest_distance(mhit, query, subject, !leftOf)
+        .findPrecedeFollow_pmin(phit, pdist, mhit, mdist)
+    })
+
+    ## clean up
+    qryHits <- c(queryHits(phit), queryHits(mhit), queryHits(bhit))
+    subjHits <- c(subjectHits(phit), subjectHits(mhit), subjectHits(bhit))
+    if ("arbitrary" == select) {
+        hits <- integer()
+        hits[length(query)] <- NA_integer_
+        idx <- !duplicated(qryHits) ## ties
+        hits[qryHits[idx]] <- subjHits[idx]
+    } else {
+        hits <- .Hits(qryHits, subjHits, length(query), length(subject))
+    }
+    hits
+}
 
 setMethod("nearest", c("GenomicRanges", "missing"),
     function(x, subject, ignore.strand=FALSE, ...)
@@ -961,139 +1117,32 @@ setMethod("nearest", c("GenomicRanges", "missing"),
     }
 )
 
-.findRanges <- function(x, subject, ignore.strand, type, ...)
-{
-    x <- .checkStrand(x, subject, ignore.strand)
-    sinfo <- merge(seqinfo(x), seqinfo(subject))
-    values(x) <- list(posIndx=seq_len(length(x)))
-    values(subject) <- list(posIndx=seq_len(length(subject)))
-    xLst <- split(x, seqnames(x), drop=FALSE)
-    xLst <- xLst[elementLengths(xLst) > 0L]
-    subjectLst <- split(subject, seqnames(subject), drop=FALSE)
-    ans <- dist1 <- dist2 <- rep.int(NA_integer_, length(x))
-
-    for (sq in names(xLst)) {
-        if (!(sq %in% names(subjectLst)))
-           break
-        x1Split <- split(xLst[[sq]], strand(xLst[[sq]]))
-        x1Split <- x1Split[elementLengths(x1Split) > 0L]
-        s1 <- subjectLst[[sq]]
-        ss1 <- split(s1, strand(s1))
-        for (st in names(x1Split)) {
-            xelt <- x1Split[[st]]
-            if (st == "+") {
-                subPos <- unlist(ss1[c("+", "*")])
-                res <- .findRangesPos(xelt, subPos, type, ...)
-                k <- values(xelt)[["posIndx"]][!is.na(res)]
-                ans[k] <- values(subPos)[["posIndx"]][na.omit(res)]
-            } else if (st == "-") {
-                subNeg <- unlist(ss1[c("-", "*")])
-                res <- .findRangesNeg(xelt, subNeg, type, ...)
-                k <- values(xelt)[["posIndx"]][!is.na(res)]
-                ans[k] <- values(subNeg)[["posIndx"]][na.omit(res)]
-            } else if (st == "*") {
-                if (type == "nearest") {
-                    res <- nearest(ranges(xelt), ranges(s1))
-                    k <- values(xelt)[["posIndx"]][!is.na(res)]
-                    ans[k] <- values(s1)[["posIndx"]][na.omit(res)]
-                } else { 
-                    ## FIXME : include "*"?
-                    sub1 <- unlist(ss1["+"])
-                    res1 <- .findRangesPos(xelt, sub1, type, ...)
-                    k1 <- values(xelt)[["posIndx"]][!is.na(res1)]
-                    dist1[k1] <- .distance(xelt, sub1, res1, "+", type) 
-                    ans[k1] <- values(sub1)[["posIndx"]][na.omit(res1)]
-
-                    ## FIXME : include "*"?
-                    sub2 <- unlist(ss1["-"])
-                    res2 <- .findRangesNeg(xelt, sub2, type, ...)
-                    k2 <- values(xelt)[["posIndx"]][!is.na(res2)]
-                    dist2[k2] <- .distance(xelt, sub2, res2, "-", type) 
-                    ans[k2] <- values(sub2)[["posIndx"]][na.omit(res2)]
-
-                    ##  resolve queries matching both "+" and "-" 
-                    if (!identical(integer(0), k1) && 
-                        !identical(integer(0), k2)) {
-                        tie <- .breakTie(sub1, res1, k1, dist1, sub2, res2, k2, 
-                                         dist2, type)
-                        ans[tie[["idx"]]] <- tie[["value"]]
-                    }
-                }
-            }
-        }
+setMethod("nearest", c("GenomicRanges", "GenomicRanges"),
+    function(x, subject, ignore.strand=FALSE, ...)
+    {
+        .nearest(x, subject, ignore.strand, ...) 
     }
+)
+
+.nearest <- function(x, subject, ignore.strand, ...)
+{
+    p <- precede(x, subject, ignore.strand, select="arbitrary")
+    f <- follow(x, subject, ignore.strand, select="arbitrary")
+    midx <- !is.na(p) & !is.na(f)
+    pdist <- distance(x[midx], subject[p[midx]])
+    fdist <- distance(x[midx], subject[f[midx]])
+
+    ## choose nearest or not missing 
+    ans <- rep.int(NA_integer_, length(x))
+    ans[midx] <- ifelse(pdist > fdist, p[midx], f[midx])
+    ans[!midx] <- ifelse(is.na(p[!midx]), f[!midx], p[!midx])
+
+    ## if tie, choose lowest index 
+    didx <- pdist == fdist
+    if (any(na.omit(didx)))
+        ans[midx[didx]] <- pmin(p[midx[didx]], f[midx[didx]])
+
     ans
-}
-
-.checkStrand <- function(x, subject, ignore.strand)
-{
-    if (!isTRUEorFALSE(ignore.strand))
-        stop("'ignore.strand' must be TRUE or FALSE")
-    if (ignore.strand)
-        strand(x) <- strand(subject) <- "+"
-    if (all(as.character(strand(x)) == "*") && 
-        all(as.character(strand(subject)) == "*"))
-        strand(x) <- strand(subject) <- "+"
-    x
-}
-
-.distance <- function(xelt, sub, res, strand, type)
-{
-    sidx <- na.omit(res)
-    eidx <- !is.na(res)
-    if (strand == "+")
-        switch(type,
-           precede=start(sub[sidx]) - end(xelt[eidx]),
-           follow=start(xelt[eidx]) - end(sub[sidx]))
-    else if (strand == "-") 
-        switch(type,
-           precede=start(xelt[eidx]) - end(sub[sidx]),
-           follow=start(sub[sidx]) - end(xelt[eidx]))
-}
-
-.breakTie <- function(sub1, res1, k1, dist1, 
-                      sub2, res2, k2, dist2, type)
-{
-    mt <- k1[k1 %in% k2]
-    if (identical(integer(0), mt))
-        return(DataFrame(idx=integer(), value=integer()))
-
-    ## if tie, choose subject with minimum distance
-    map1 <- data.frame(k1, spi=values(sub1)[["posIndx"]][na.omit(res1)])
-    map2 <- data.frame(k2, spi=values(sub2)[["posIndx"]][na.omit(res2)])
-    mindist <- mt[dist1[mt] < dist2[mt]]
-    minvalue <- map1$spi[map1$k1 %in% mindist]
-
-    ## if equidistant 
-    ## precede -> choose subject with lowest index
-    ## follow -> choose subject with highest index
-    eqidist <- eqivalue <- integer()
-    if (any(mt[dist1[mt] == dist2[mt]])) {
-        eqidist <- mt[dist1[mt] == dist2[mt]]
-        eq1 <- map1$spi[map1$k1 %in% eqidist]
-        eq2 <- map2$spi[map2$k2 %in% eqidist]
-        if (type == "precede")
-            eqivalue <- pmin(eq1, eq2)
-        if (type == "follow")
-            eqivalue <- pmax(eq1, eq2)
-    }
-    DataFrame(idx=c(mindist, eqidist), value=c(minvalue, eqivalue)) 
-}
-
-.findRangesPos <- function(query, subject, type, ...)
-{
-    switch(type,
-           precede=precede(ranges(query), ranges(subject), ...),
-           follow=follow(ranges(query), ranges(subject), ...),
-           nearest=nearest(ranges(query), ranges(subject), ...))
-}
-
-.findRangesNeg <- function(query, subject, type, ...)
-{
-    switch(type,
-           precede=follow(ranges(query), ranges(subject), ...),
-           follow=precede(ranges(query), ranges(subject), ...),
-           nearest=nearest(ranges(query), ranges(subject), ...))
 }
 
 setMethod("narrow", "GenomicRanges",
