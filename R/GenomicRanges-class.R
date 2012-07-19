@@ -1034,7 +1034,7 @@ setMethod("follow", c("GenomicRanges", "missing"),
 {
     leftOf <- "precede" == match.arg(where)
     if (ignore.strand)
-        strand(x) <- strand(subject) <- "+"
+        strand(query) <- strand(subject) <- "+"
 
     if (leftOf) {
         plusfun <- function(xstart, xend, ystart, yend, sentinel)
