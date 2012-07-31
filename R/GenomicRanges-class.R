@@ -1217,10 +1217,14 @@ setMethod("distance", c("GenomicRanges", "GenomicRanges"),
         if (length(x) != length(y))
             stop("'x' and 'y' must have the same length")
         d <- distance(ranges(x), ranges(y))
-        seqselect(d, seqnames(x) != seqnames(y)) <- NA
-        if (!ignore.strand)
-            seqselect(d, strand(x) != strand(y)) <- NA
+        mismtch <- as.character(seqnames(x)) != as.character(seqnames(y))
+        if (any(mismtch))
+            d[mismtch] <- NA
+        if (!ignore.strand) {
+            idx <- as.numeric(strand(x)) + as.numeric(strand(y))
+            if (any(idx == 3))
+                d[idx == 3] <- NA
+        }
         d
     }
 )
-
