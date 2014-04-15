@@ -16,6 +16,7 @@ setClass("GRangesList",
 
 setClassUnion("GenomicRangesORGRangesList", c("GenomicRanges", "GRangesList"))
 
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Validity.
 ###
@@ -44,6 +45,7 @@ setClassUnion("GenomicRangesORGRangesList", c("GenomicRanges", "GRangesList"))
 }
 
 setValidity2("GRangesList", .valid.GRangesList)
+
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Constructors.
@@ -142,97 +144,18 @@ setMethod("updateObject", "GRangesList",
     }
 )
 
-### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Coercion.
-###
-
-### NOT exported but used in GenomicAlignments package.
-GRangesListAsdataframe <- function(x, row.names=NULL, optional=FALSE, ...)
-{
-    if (missing(row.names))
-        row.names <- names(x@unlistData)
-    if (is.null(names(x)))
-        element <- rep.int(seq_len(length(x)), elementLengths(x))
-    else
-        element <- rep.int(names(x), elementLengths(x))
-    data.frame(element = element,
-               as.data.frame(unlist(x, use.names = FALSE),
-                             row.names = row.names),
-               stringsAsFactors = FALSE)
-}
-setMethod("as.data.frame", "GRangesList", GRangesListAsdataframe)
-
-.GRangesListAsCompressedIRangesList <- function(from)
-{
-    ans_ranges <- from@unlistData@ranges
-    ans_ranges@elementMetadata <- from@unlistData@elementMetadata
-    new("CompressedIRangesList",
-        unlistData=ans_ranges,
-        partitioning=from@partitioning,
-        elementMetadata=from@elementMetadata)
-}
-
-setAs("GRangesList", "RangesList",
-    .GRangesListAsCompressedIRangesList
-)
-
-setAs("GRangesList", "CompressedIRangesList",
-    .GRangesListAsCompressedIRangesList
-)
-
-setAs("GRangesList", "IRangesList",
-    .GRangesListAsCompressedIRangesList
-)
-
-setAs("RangedDataList", "GRangesList",
-      function(from) GRangesList(lapply(from, as, "GRanges")))
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Accessor methods.
+### Accessors.
 ###
 
 setMethod("seqnames", "GRangesList",
     function(x)
-        new2("CompressedRleList",
-             unlistData = x@unlistData@seqnames, partitioning = x@partitioning,
-             check=FALSE))
-
-setMethod("ranges", "GRangesList",
-    function(x, ...)
-        new2("CompressedIRangesList",
-             unlistData = x@unlistData@ranges, partitioning = x@partitioning,
-             check=FALSE))
-
-setMethod("strand", "GRangesList",
-    function(x)
-        new2("CompressedRleList",
-             unlistData = x@unlistData@strand, partitioning = x@partitioning,
-             check=FALSE))
-
-### NOT exported but used in GenomicAlignments package.
-getElementMetadataList <- 
-    function(x, use.names=FALSE, level = c("between", "within"), ...)
-{
-    if (!isTRUEorFALSE(use.names))
-        stop("'use.names' must be TRUE or FALSE")
-    level <- match.arg(level)
-    if (level == "between") {
-        ans <- x@elementMetadata
-        if (use.names)
-            rownames(ans) <- names(x)
-    } else {
-        elementMetadata <- x@unlistData@elementMetadata
-        if (use.names)
-            rownames(elementMetadata) <- names(x@unlistData)
-        ans <-
-          new2("CompressedSplitDataFrameList", unlistData = elementMetadata,
-               partitioning = x@partitioning, check=FALSE)
+    {
+        unlisted_x <- unlist(x, use.names=FALSE)
+        relist(seqnames(unlisted_x), x)
     }
-    ans
-}
-setMethod("elementMetadata", "GRangesList", getElementMetadataList)
-
-setMethod("seqinfo", "GRangesList", function(x) seqinfo(x@unlistData))
+)
 
 ### NOT exported but used in GenomicAlignments package.
 replaceSeqnamesList <- function(x, value)
@@ -251,6 +174,21 @@ replaceSeqnamesList <- function(x, value)
 }
 setReplaceMethod("seqnames", "GRangesList", replaceSeqnamesList)
 
+setMethod("ranges", "GRangesList",
+    function(x, use.mcols=FALSE)
+    {
+        if (!isTRUEorFALSE(use.mcols))
+            stop("'use.mcols' must be TRUE or FALSE")
+        unlisted_x <- unlist(x, use.names=FALSE)
+        unlisted_ans <- unlisted_x@ranges
+        mcols(unlisted_ans) <- mcols(unlisted_x)
+        ans <- relist(unlisted_ans, x)
+        if (use.mcols)
+            mcols(ans) <- mcols(x)
+        ans
+    }
+)
+
 setReplaceMethod("ranges", "GRangesList",
     function(x, value) 
     {
@@ -260,6 +198,80 @@ setReplaceMethod("ranges", "GRangesList",
                  "elementLengths as 'x'")
         ranges(x@unlistData) <- as(unlist(value, use.names = FALSE), "IRanges")
         x
+    }
+)
+
+### Same as for CompressedIRangesList.
+setMethod("start", "GRangesList",
+    function(x, ...)
+    {
+        unlisted_x <- unlist(x, use.names=FALSE)
+        relist(start(unlisted_x), x)
+    }
+)
+
+setReplaceMethod("start", "GRangesList",
+    function(x, check = TRUE, value)
+    {
+        if (!is(value, "IntegerList") ||
+            !identical(elementLengths(x), elementLengths(value)))
+            stop("replacement 'value' is not an IntegerList with the same ",
+                 "elementLengths as 'x'")
+        value <- unlist(value, use.names = FALSE)
+        start(ranges(x@unlistData), check = check) <- value
+        x
+    }
+)
+
+### Same as for CompressedIRangesList.
+setMethod("end", "GRangesList",
+    function(x, ...)
+    {
+        unlisted_x <- unlist(x, use.names=FALSE)
+        relist(end(unlisted_x), x)
+    }
+)
+
+setReplaceMethod("end", "GRangesList",
+    function(x, check = TRUE, value)
+    {
+        if (!is(value, "IntegerList") ||
+            !identical(elementLengths(x), elementLengths(value)))
+            stop("replacement 'value' is not an IntegerList with the same ",
+                 "elementLengths as 'x'")
+        value <- unlist(value, use.names = FALSE)
+        end(ranges(x@unlistData), check = check) <- value
+        x
+    }
+)
+
+### Same as for CompressedIRangesList.
+setMethod("width", "GRangesList",
+    function(x)
+    {
+        unlisted_x <- unlist(x, use.names=FALSE)
+        relist(width(unlisted_x), x)
+    }
+)
+
+setReplaceMethod("width", "GRangesList",
+    function(x, check = TRUE, value)
+    {
+        if (!is(value, "IntegerList") ||
+            !identical(elementLengths(x), elementLengths(value)))
+            stop("replacement 'value' is not an IntegerList with the same ",
+                 "elementLengths as 'x'")
+        value <- unlist(value, use.names = FALSE)
+        width(ranges(x@unlistData), check = check) <- value
+        x
+    }
+)
+
+setMethod("strand", "GRangesList",
+    function(x)
+    {
+        unlisted_x <- unlist(x, use.names=FALSE)
+        relist(strand(unlisted_x), x)
     }
 )
 
@@ -280,6 +292,27 @@ replaceStrandList <- function(x, value)
     x
 }
 setReplaceMethod("strand", "GRangesList", replaceStrandList)
+
+### NOT exported but used in GenomicAlignments package.
+getElementMetadataList <- 
+    function(x, use.names=FALSE, level = c("between", "within"), ...)
+{
+    if (!isTRUEorFALSE(use.names))
+        stop("'use.names' must be TRUE or FALSE")
+    level <- match.arg(level)
+    if (level == "between") {
+        ans <- x@elementMetadata
+        if (use.names)
+            rownames(ans) <- names(x)
+        return(ans)
+    }
+    unlisted_x <- unlist(x, use.names=FALSE)
+    unlisted_ans <- unlisted_x@elementMetadata
+    if (use.names)
+        rownames(unlisted_ans) <- names(unlisted_x)
+    relist(unlisted_ans, x)
+}
+setMethod("elementMetadata", "GRangesList", getElementMetadataList)
 
 ### NOT exported but used in GenomicAlignments package.
 replaceElementMetadataList <- 
@@ -318,6 +351,8 @@ replaceElementMetadataList <-
 }
 setReplaceMethod("elementMetadata", "GRangesList", replaceElementMetadataList)
 
+setMethod("seqinfo", "GRangesList", function(x) seqinfo(x@unlistData))
+
 ### NOT exported but used in GenomicAlignments package.
 replaceSeqinfoList <- function(x, new2old=NULL, force=FALSE, value)
 {
@@ -344,69 +379,43 @@ setReplaceMethod("score", "GRangesList", function(x, value) {
   x
 })
 
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### RangesList methods.
+### Coercion.
 ###
 
-setMethod("start", "GRangesList",
-    function(x, ...)
-        new2("CompressedIntegerList",
-             unlistData = start(x@unlistData@ranges),
-             partitioning = x@partitioning, check=FALSE))
+### NOT exported but used in GenomicAlignments package.
+GRangesListAsdataframe <- function(x, row.names=NULL, optional=FALSE, ...)
+{
+    if (missing(row.names))
+        row.names <- names(x@unlistData)
+    if (is.null(names(x)))
+        element <- rep.int(seq_len(length(x)), elementLengths(x))
+    else
+        element <- rep.int(names(x), elementLengths(x))
+    data.frame(element = element,
+               as.data.frame(unlist(x, use.names = FALSE),
+                             row.names = row.names),
+               stringsAsFactors = FALSE)
+}
+setMethod("as.data.frame", "GRangesList", GRangesListAsdataframe)
 
-setMethod("end", "GRangesList",
-    function(x, ...)
-        new2("CompressedIntegerList",
-             unlistData = end(x@unlistData@ranges),
-             partitioning = x@partitioning, check=FALSE))
-
-setMethod("width", "GRangesList",
-    function(x)
-        new2("CompressedIntegerList",
-             unlistData = width(x@unlistData@ranges),
-             partitioning = x@partitioning, check=FALSE))
-
-setReplaceMethod("start", "GRangesList",
-    function(x, check = TRUE, value)
-    {
-        if (!is(value, "IntegerList") ||
-            !identical(elementLengths(x), elementLengths(value)))
-            stop("replacement 'value' is not an IntegerList with the same ",
-                 "elementLengths as 'x'")
-        value <- unlist(value, use.names = FALSE)
-        start(ranges(x@unlistData), check = check) <- value
-        x
-    }
+setAs("GRangesList", "CompressedIRangesList",
+    function(from) ranges(from, use.mcols=TRUE)
+)
+setAs("GRangesList", "IRangesList",
+    function(from) ranges(from, use.mcols=TRUE)
+)
+setAs("GRangesList", "RangesList",
+    function(from) ranges(from, use.mcols=TRUE)
 )
 
-setReplaceMethod("end", "GRangesList",
-    function(x, check = TRUE, value)
-    {
-        if (!is(value, "IntegerList") ||
-            !identical(elementLengths(x), elementLengths(value)))
-            stop("replacement 'value' is not an IntegerList with the same ",
-                 "elementLengths as 'x'")
-        value <- unlist(value, use.names = FALSE)
-        end(ranges(x@unlistData), check = check) <- value
-        x
-    }
-)
+setAs("RangedDataList", "GRangesList",
+      function(from) GRangesList(lapply(from, as, "GRanges")))
 
-setReplaceMethod("width", "GRangesList",
-    function(x, check = TRUE, value)
-    {
-        if (!is(value, "IntegerList") ||
-            !identical(elementLengths(x), elementLengths(value)))
-            stop("replacement 'value' is not an IntegerList with the same ",
-                 "elementLengths as 'x'")
-        value <- unlist(value, use.names = FALSE)
-        width(ranges(x@unlistData), check = check) <- value
-        x
-    }
-)
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-### Vector methods.
+### Subsetting.
 ###
 
 .sBracketSubsetGRList <- function(x, i, j, ..., drop)
@@ -482,6 +491,7 @@ setReplaceMethod("[", "GRangesList", .sBracketReplaceGRList)
 }
 setReplaceMethod("[[", "GRangesList", .dBracketReplaceGRList)
 
+
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### Going from GRanges to GRangesList with extractList() and family.
 ###
@@ -491,6 +501,7 @@ setMethod("relistToClass", "GRanges", function(x) "GRangesList")
 setMethod("splitAsListReturnedClass", "GRanges",
     function(x) {.Deprecated("relistToClass"); "GRangesList"}
 )
+
 
 ### - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ### show method.
