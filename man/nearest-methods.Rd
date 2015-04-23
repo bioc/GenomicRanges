@@ -66,6 +66,13 @@
     \code{subject} the \code{x} is not included in the \link[S4Vectors]{Hits}
     object. 
   }
+  \item{algorithm}{
+    This argument is passed to \code{\link{findOverlaps}}, which
+    \code{nearest} and \code{distanceToNearest} use internally.
+    See \code{?\link{findOverlaps}} for more information.
+    Note that it will be removed in BioC 3.3 so please don't use it unless
+    you have a good reason to do so (e.g. troubleshooting).
+  }
   \item{ignore.strand}{
     A \code{logical} indicating if the strand of the input ranges
     should be ignored. When \code{TRUE}, strand is set to \code{'+'}.
