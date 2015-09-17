@@ -15,6 +15,26 @@
 \alias{GRanges}
 \alias{updateObject,GRanges-method}
 
+% Coercion:
+\alias{as.character,GenomicRanges-method}
+\alias{as.factor,GenomicRanges-method}
+\alias{as.data.frame,GenomicRanges-method}
+\alias{coerce,GenomicRanges,RangesList-method}
+\alias{coerce,GenomicRanges,RangedData-method}
+\alias{coerce,Seqinfo,GenomicRanges-method}
+\alias{coerce,Seqinfo,RangesList-method}
+\alias{granges,GenomicRanges-method}
+
+\alias{coerce,character,GRanges-method}
+\alias{coerce,character,GenomicRanges-method}
+\alias{coerce,factor,GRanges-method}
+\alias{coerce,factor,GenomicRanges-method}
+\alias{coerce,RangesList,GRanges-method}
+\alias{coerce,RangedData,GRanges-method}
+\alias{coerce,RleList,GRanges-method}
+\alias{coerce,RleViewsList,GRanges-method}
+\alias{coerce,Seqinfo,GRanges-method}
+
 % Accessors:
 \alias{seqnames,GRanges-method}
 \alias{seqnames<-,GenomicRanges-method}
@@ -29,19 +49,6 @@
 \alias{seqinfo<-,GenomicRanges-method}
 \alias{score,GenomicRanges-method}
 \alias{score<-,GenomicRanges-method}
-
-% Coercion:
-\alias{coerce,RangedData,GRanges-method}
-\alias{coerce,GenomicRanges,RangedData-method}
-\alias{coerce,RangesList,GRanges-method}
-\alias{coerce,GenomicRanges,RangesList-method}
-\alias{coerce,RleList,GRanges-method}
-\alias{coerce,RleViewsList,GRanges-method}
-\alias{as.data.frame,GenomicRanges-method}
-\alias{coerce,Seqinfo,GRanges-method}
-\alias{coerce,Seqinfo,GenomicRanges-method}
-\alias{coerce,Seqinfo,RangesList-method}
-\alias{granges,GenomicRanges-method}
 
 % Ranges methods:
 \alias{start,GenomicRanges-method}
@@ -99,29 +106,48 @@
 \section{Constructor}{
   \describe{
     \item{}{
-      \code{GRanges(seqnames = Rle(), ranges = IRanges(),
-                    strand = Rle("*", length(seqnames)),
+      \code{GRanges(seqnames=Rle(), ranges=NULL, strand=NULL,
                     ...,
-                    seqlengths = NULL, seqinfo = NULL)}:
+                    seqlengths=NULL, seqinfo=NULL)}:
       Creates a GRanges object.
       \describe{
-        \item{\code{seqnames}}{Rle object, character vector, or factor
-          containing the sequence names.}
-        \item{\code{ranges}}{IRanges object containing the ranges.}
-        \item{\code{strand}}{Rle object, character vector, or factor
-          containing the strand information.}
-        \item{\code{\ldots}}{Optional metadata columns.
-          These columns cannot be named
+        \item{\code{seqnames}}{
+          An \link[S4Vectors]{Rle} object, character vector, or factor
+          containing the sequence names.
+        }
+        \item{\code{ranges}}{
+          An \link[IRanges]{IRanges} object containing the ranges.
+        }
+        \item{\code{strand}}{
+          \link[S4Vectors]{Rle} object, character vector, or factor
+          containing the strand information.
+        }
+        \item{\code{...}}{
+          Optional metadata columns. These columns cannot be named
           \code{"start"}, \code{"end"}, \code{"width"}, or
-          \code{"element"}. A named integer vector \code{"seqlength"}
-	  can be used instead of \code{seqinfo}.}
-        \item{\code{seqlengths}}{an integer vector named with the
-          sequence names and containing the lengths (or NA) for each
-          \code{level(seqnames)}.}
-        \item{\code{seqinfo}}{a Seqinfo object containing allowed
-          sequence names and lengths (or NA) for each
-          \code{level(seqnames)}.}
+          \code{"element"}.
+        }
+        \item{\code{seqlengths}}{
+          An integer vector named with \code{levels(seqnames)} and containing
+          the lengths (or NA) for each level in \code{levels(seqnames)}.
+        }
+        \item{\code{seqinfo}}{
+          A \link[GenomeInfoDb]{Seqinfo} object containing allowed
+          sequence names, lengths (or NA), and circularity flag, for each
+          level in \code{levels(seqnames)}.
+        }
       }
+      If \code{ranges} is not supplied and/or NULL then the constructor
+      proceeds in 2 steps:
+      \enumerate{
+        \item An initial GRanges object is created with
+              \code{as(seqnames, "GRanges")}.
+        \item Then this GRanges object is updated according to whatever
+              non-NULL remaining arguments were passed to the call to
+              \code{GRanges()}.
+      }
+      Because of this behavior, \code{GRanges(x)} is equivalent to
+      \code{as(x, "GRanges")}.
     }
   }
 }
@@ -131,8 +157,18 @@
 
   \describe{
     \item{}{
-      \code{as(from, "GRanges")}: Creates a GRanges object from a
-      RangedData, RangesList, RleList or RleViewsList object.
+      \code{as(from, "GRanges")}: Creates a GRanges object from a character
+      vector, a factor, or a RangedData, RangesList, RleList, or RleViewsList
+      object.
+
+      When \code{from} is a vector (or factor), each element in it must
+      represent a genomic range in format \code{chr1:2501-2800}
+      (unstranded range) or \code{chr1:2501-2800:+} (stranded range).
+      \code{..} is also supported as a separator between the start and end
+      positions. Strand can be \code{+}, \code{-}, \code{*}, or missing.
+      The names on \code{from} are propagated to the returned GRanges object.
+      See \code{as.character()} and \code{as.factor()} below for the
+      reverse transformations.
 
       Coercing a data.frame or DataFrame into a GRanges object is also
       supported. See \code{\link{makeGRangesFromDataFrame}} for the details.
@@ -152,6 +188,31 @@
       metadata columns (i.e. metadata columns on the ranges).
       The \code{seqlengths(from)}, \code{isCircular(from)}, and
       \code{genome(from)} vectors become the metadata columns.
+    }
+    \item{}{
+      \code{as.character(x, ignore.strand=FALSE)}:
+      Turn GRanges object \code{x} into a character vector where each
+      range in \code{x} is represented by a string in format
+      \code{chr1:2501-2800:+}. If \code{ignore.strand} is TRUE or if
+      \emph{all} the ranges in \code{x} are unstranded (i.e. their strand
+      is set to \code{*}), then all the strings in the output are in
+      format \code{chr1:2501-2800}.
+
+      The names on \code{x} are propagated to the returned character vector.
+      Its metadata (\code{metadata(x)}) and metadata columns (\code{mcols(x)})
+      are ignored.
+
+      See \code{as(from, "GRanges")} above for the reverse transformation.
+    }
+    \item{}{
+      \code{as.factor(x)}:
+      Equivalent to
+\preformatted{  factor(as.character(x), levels=as.character(sort(unique(x))))
+}
+      See \code{as(from, "GRanges")} above for the reverse transformation.
+
+      Note that \code{table(x)} is supported on a GRanges object. It is
+      equivalent to, but much faster than, \code{table(as.factor(x))}.
     }
     \item{}{
       \code{as.data.frame(x, row.names = NULL, optional = FALSE, ...)}:
@@ -422,21 +483,20 @@
     }
   }
 
-  Note that a GRanges object can be used to subset a list-like object that
-  has names on it. In that case, the names on the list-like object are
-  interpreted as sequence names.
+  Note that a GRanges object can be used to as a subscript to subset a
+  list-like object that has names on it. In that case, the names on the
+  list-like object are interpreted as sequence names.
   In the code snippets below, \code{x} is a list or \link{List} object with
-  names on it, and the subscript \code{i} is a GRanges object with all its
+  names on it, and the subscript \code{gr} is a GRanges object with all its
   seqnames being valid \code{x} names.
 
   \describe{
     \item{}{
-      \code{x[i]}:
+      \code{x[gr]}:
       Return an object of the same class as \code{x} and \emph{parallel}
-      to \code{i}. More precisely, it's conceptually doing:
-      \preformatted{
-      as(lapply(i, function(ii) x[[seqnames(ii)]][ranges(ii)]), class(x))
-      }
+      to \code{gr}. More precisely, it's conceptually doing:
+\preformatted{  lapply(gr, function(gr1) x[[seqnames(gr1)]][ranges(gr1)])
+}
     }
   }
 }
@@ -464,54 +524,135 @@
 \author{P. Aboyoun and H. Pages}
 
 \seealso{
-  \code{\link{makeGRangesFromDataFrame}},
-  \link{GRangesList-class},
-  \code{\link[GenomeInfoDb]{seqinfo}},
-  \link[S4Vectors]{Vector-class},
-  \link[S4Vectors]{Rle-class},
-  \link[IRanges]{Ranges-class},
-  \link[S4Vectors]{DataFrame-class},
-  \link[GenomicRanges]{intra-range-methods},
-  \link[GenomicRanges]{inter-range-methods},
-  \link[GenomicRanges]{setops-methods},
-  \link[GenomicRanges]{findOverlaps-methods},
-  \link[GenomicRanges]{nearest-methods},
-  \link[GenomicRanges]{coverage-methods}
+  \itemize{
+    \item \code{\link{makeGRangesFromDataFrame}}
+    \item \code{\link[GenomeInfoDb]{seqinfo}}
+    \item \link{GenomicRanges-comparison}
+    \item \link[GenomicRanges]{intra-range-methods}
+    \item \link[GenomicRanges]{inter-range-methods}
+    \item \link[GenomicRanges]{coverage-methods}
+    \item \link[GenomicRanges]{setops-methods}
+    \item \link[GenomicRanges]{findOverlaps-methods}
+    \item \link[GenomicRanges]{nearest-methods}
+    \item \code{\link{absoluteRanges}}
+    \item \code{\link{tileGenome}}
+    \item \link{GRangesList-class}
+    \item \link[IRanges]{Ranges-class}
+    \item \link[S4Vectors]{Vector-class}
+    \item \link[S4Vectors]{Rle-class}
+    \item \link[S4Vectors]{DataFrame-class}
+  }
 }
 
 \examples{
-seqinfo <- Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1")
-gr <-
-  GRanges(seqnames =
-          Rle(c("chr1", "chr2", "chr1", "chr3"), c(1, 3, 2, 4)),
-          ranges = IRanges(
-            1:10, width = 10:1, names = head(letters,10)),
-          strand = Rle(
-            strand(c("-", "+", "*", "+", "-")),
-            c(1, 2, 2, 3, 2)),
-          score = 1:10,
-          GC = seq(1, 0, length=10),
-          seqinfo=seqinfo)
-gr
+## ---------------------------------------------------------------------
+## CONSTRUCTION
+## ---------------------------------------------------------------------
+## Specifying the bare minimum i.e. seqnames and ranges only. The
+## GRanges object will have no names, no strand information, and no
+## metadata columns:
+gr0 <- GRanges(Rle(c("chr2", "chr2", "chr1", "chr3"), c(1, 3, 2, 4)),
+               IRanges(1:10, width=10:1))
+gr0
 
-## Summarizing elements
+## Specifying names, strand, metadata columns. They can be set on an
+## existing object:
+names(gr0) <- head(letters, 10)
+strand(gr0) <- Rle(strand(c("-", "+", "*", "+", "-")), c(1, 2, 2, 3, 2))
+mcols(gr0)$score <- 1:10
+mcols(gr0)$GC <- seq(1, 0, length=10)
+gr0
+
+## ... or specified at construction time:
+gr <- GRanges(Rle(c("chr2", "chr2", "chr1", "chr3"), c(1, 3, 2, 4)),
+              IRanges(1:10, width=10:1, names=head(letters, 10)),
+              Rle(strand(c("-", "+", "*", "+", "-")), c(1, 2, 2, 3, 2)),
+              score=1:10, GC=seq(1, 0, length=10))
+stopifnot(identical(gr0, gr))
+
+## Specifying the seqinfo. It can be set on an existing object:
+seqinfo <- Seqinfo(paste0("chr", 1:3), c(1000, 2000, 1500), NA, "mock1")
+seqinfo(gr0) <- merge(seqinfo(gr0), seqinfo)
+seqlevels(gr0) <- seqlevels(seqinfo)
+
+## ... or specified at construction time:
+gr <- GRanges(Rle(c("chr2", "chr2", "chr1", "chr3"), c(1, 3, 2, 4)),
+              IRanges(1:10, width=10:1, names=head(letters, 10)),
+              Rle(strand(c("-", "+", "*", "+", "-")), c(1, 2, 2, 3, 2)),
+              score=1:10, GC=seq(1, 0, length=10),
+              seqinfo=seqinfo)
+stopifnot(identical(gr0, gr))
+
+## ---------------------------------------------------------------------
+## COERCION
+## ---------------------------------------------------------------------
+## From GRanges:
+as.character(gr)
+as.factor(gr)
+as.data.frame(gr)
+
+## From character to GRanges:
+x1 <- "chr2:56-125"
+as(x1, "GRanges")
+as(rep(x1, 4), "GRanges")
+x2 <- c(A=x1, B="chr1:25-30:-")
+as(x2, "GRanges")
+
+## From data.frame to GRanges:
+df <- data.frame(chrom="chr2", start=11:15, end=20:24)
+gr3 <- as(df, "GRanges")
+
+## Alternatively, coercion to GRanges can be done by just calling the
+## GRanges() constructor on the object to coerce:
+gr1 <- GRanges(x1)  # same as as(x1, "GRanges")
+gr2 <- GRanges(x2)  # same as as(x2, "GRanges")
+gr3 <- GRanges(df)  # same as as(df, "GRanges")
+
+## Sanity checks:
+stopifnot(identical(as(x1, "GRanges"), gr1))
+stopifnot(identical(as(x2, "GRanges"), gr2))
+stopifnot(identical(as(df, "GRanges"), gr3))
+
+## ---------------------------------------------------------------------
+## SUMMARIZING ELEMENTS
+## ---------------------------------------------------------------------
 table(seqnames(gr))
+table(strand(gr))
 sum(width(gr))
+table(gr)
 summary(mcols(gr)[,"score"])
 
-## Renaming the underlying sequences
+## The number of lines displayed in the 'show' method are controlled
+## with two global options:
+longGR  <- sample(gr, 25, replace=TRUE)
+longGR
+options(showHeadLines=7)
+options(showTailLines=2)
+longGR
+
+## Revert to default values
+options(showHeadLines=NULL)
+options(showTailLines=NULL)
+
+## ---------------------------------------------------------------------
+## RENAMING THE UNDERLYING SEQUENCES
+## ---------------------------------------------------------------------
 seqlevels(gr)
 seqlevels(gr) <- sub("chr", "Chrom", seqlevels(gr))
 gr
 seqlevels(gr) <- sub("Chrom", "chr", seqlevels(gr)) # revert
 
-## Combining objects
+## ---------------------------------------------------------------------
+## COMBINING OBJECTS
+## ---------------------------------------------------------------------
 gr2 <- GRanges(seqnames=Rle(c('chr1', 'chr2', 'chr3'), c(3, 3, 4)),
-               IRanges(1:10, width=5), strand='-',
-               score=101:110, GC = runif(10),
+               IRanges(1:10, width=5),
+               strand='-',
+               score=101:110, GC=runif(10),
                seqinfo=seqinfo)
 gr3 <- GRanges(seqnames=Rle(c('chr1', 'chr2', 'chr3'), c(3, 4, 3)),
-               IRanges(101:110, width=10), strand='-',
+               IRanges(101:110, width=10),
+               strand='-',
                score=21:30,
                seqinfo=seqinfo)
 some.gr <- c(gr, gr2)
@@ -519,19 +660,11 @@ some.gr <- c(gr, gr2)
 ## all.gr <- c(gr, gr2, gr3) ## (This would fail)
 all.gr <- c(gr, gr2, gr3, ignore.mcols=TRUE)
 
-## Subsetting a named list-like object *by* a GRanges subscript
+## ---------------------------------------------------------------------
+## USING A GRANGES OBJECT AS A SUBSCRIPT TO SUBSET ANOTHER OBJECT
+## ---------------------------------------------------------------------
+## Subsetting *by* a GRanges subscript is supported only if the object
+## to subset is a named list-like object:
 x <- RleList(chr1=101:120, chr2=2:-8, chr3=31:40)
 x[gr]
-
-## The number of lines displayed in the 'show' method
-## are controlled with two global options.
-longGR <- c(gr[,"score"], gr2[,"score"], gr3)
-longGR
-options("showHeadLines"=7)
-options("showTailLines"=2)
-longGR
-
-## Revert to default values
-options("showHeadLines"=NULL)
-options("showTailLines"=NULL)
 }
