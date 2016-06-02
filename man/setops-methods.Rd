@@ -2,16 +2,22 @@
 \alias{setops-methods}
 
 \alias{union}
-\alias{union,GRanges,GRanges-method}
+\alias{union,GenomicRanges,GenomicRanges-method}
 \alias{union,GRangesList,GRangesList-method}
+\alias{union,GenomicRanges,Vector-method}
+\alias{union,Vector,GenomicRanges-method}
 
 \alias{intersect}
-\alias{intersect,GRanges,GRanges-method}
+\alias{intersect,GenomicRanges,GenomicRanges-method}
 \alias{intersect,GRangesList,GRangesList-method}
+\alias{intersect,GenomicRanges,Vector-method}
+\alias{intersect,Vector,GenomicRanges-method}
 
 \alias{setdiff}
-\alias{setdiff,GRanges,GRanges-method}
+\alias{setdiff,GenomicRanges,GenomicRanges-method}
 \alias{setdiff,GRangesList,GRangesList-method}
+\alias{setdiff,GenomicRanges,Vector-method}
+\alias{setdiff,Vector,GenomicRanges-method}
 
 \alias{punion}
 \alias{punion,GRanges,GRanges-method}
@@ -46,11 +52,11 @@
 ## Vector-wise set operations
 ## --------------------------
 
-\S4method{union}{GRanges,GRanges}(x, y, ignore.strand=FALSE)
+\S4method{union}{GenomicRanges,GenomicRanges}(x, y, ignore.strand=FALSE)
 
-\S4method{intersect}{GRanges,GRanges}(x, y, ignore.strand=FALSE)
+\S4method{intersect}{GenomicRanges,GenomicRanges}(x, y, ignore.strand=FALSE)
 
-\S4method{setdiff}{GRanges,GRanges}(x, y, ignore.strand=FALSE)
+\S4method{setdiff}{GenomicRanges,GenomicRanges}(x, y, ignore.strand=FALSE)
 
 ## Element-wise (aka "parallel") set operations
 ## --------------------------------------------
@@ -66,7 +72,7 @@
 \arguments{
   \item{x, y}{
     For \code{union}, \code{intersect}, and \code{setdiff}:
-    2 \link{GRanges} objects or 2 \link{GRangesList} objects.
+    2 \link{GenomicRanges} objects or 2 \link{GRangesList} objects.
 
     For \code{punion} and \code{pintersect}: 2 \link{GRanges} objects, or
     1 \link{GRanges} object and 1 \link{GRangesList} object.
@@ -76,8 +82,8 @@
 
     For \code{pgap}: 2 \link{GRanges} objects.
 
-    In addition, for the "parallel" operations, \code{x} and \code{y} must
-    be of equal length (i.e. \code{length(x) == length(y)}).
+    In addition, for the \emph{parallel} operations, \code{x} and \code{y}
+    must be of equal length (i.e. \code{length(x) == length(y)}).
   }
   \item{fill.gap}{
     Logical indicating whether or not to force a union by using the rule
@@ -127,8 +133,8 @@
 
 \value{
   For \code{union}, \code{intersect}, and \code{setdiff}: a \link{GRanges}
-  object if \code{x} and \code{y} are \link{GRanges} objects, and a
-  \link{GRangesList} object if they are \link{GRangesList} objects.
+  object if \code{x} and \code{y} are \link{GenomicRanges} objects,
+  and a \link{GRangesList} object if they are \link{GRangesList} objects.
 
   For \code{punion} and \code{pintersect}: when \code{x} or \code{y} is
   not a \link{GRanges} object, an object of the same class as this
