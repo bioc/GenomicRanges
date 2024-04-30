@@ -1,3 +1,18 @@
+CHANGES IN VERSION 1.56.0
+-------------------------
+
+NEW FEATURES
+
+    o Add terminators() method, same as promoters() but for terminator regions.
+
+BUG FIXES
+
+    o Small fix in makeGRangesFromDataFrame(). Fix error when: (1) input has
+      zero rows, and (2) has no strand field or 'ignore.strand' is TRUE.
+      By Marcel Ramos.
+      See https://github.com/Bioconductor/GenomicRanges/issues/81
+
+
 CHANGES IN VERSION 1.54.0
 -------------------------
 
