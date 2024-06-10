@@ -143,8 +143,8 @@ if (isTRUE(isSmallGenome(ex))) {
 
 ## With a "big" genome (but we can reduce it)
 
-library(TxDb.Hsapiens.UCSC.hg19.knownGene)
-txdb <- TxDb.Hsapiens.UCSC.hg19.knownGene
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
+txdb <- TxDb.Hsapiens.UCSC.hg38.knownGene
 ex <- exons(txdb)
 isSmallGenome(ex)
 \dontrun{
