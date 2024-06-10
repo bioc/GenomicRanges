@@ -81,7 +81,7 @@
 }
 
 \details{
-  \itemize{
+  \describe{
     \item{\code{shift}:}{ behaves like the \code{shift} method for
       \link[IRanges]{IntegerRanges} objects. See
       \code{?`\link[IRanges]{intra-range-methods}`} for the details.
