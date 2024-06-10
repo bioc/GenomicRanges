@@ -14,7 +14,7 @@ biocViews: Genetics, Infrastructure, DataRepresentation, Sequencing,
 	Annotation, GenomeAnnotation, Coverage
 URL: https://bioconductor.org/packages/GenomicRanges
 BugReports: https://github.com/Bioconductor/GenomicRanges/issues
-Version: 1.57.0
+Version: 1.57.1
 License: Artistic-2.0
 Encoding: UTF-8
 Authors@R: c(
@@ -41,11 +41,11 @@ Suggests: Matrix, Biobase, AnnotationDbi, annotate, Biostrings (>= 2.25.3),
 	KEGGgraph, RNAseqData.HNRNPC.bam.chr14, pasillaBamSubset,
 	KEGGREST, hgu95av2.db, hgu95av2probe,
 	BSgenome.Scerevisiae.UCSC.sacCer2,
-	BSgenome.Hsapiens.UCSC.hg19,
+	BSgenome.Hsapiens.UCSC.hg38,
 	BSgenome.Mmusculus.UCSC.mm10,
 	TxDb.Athaliana.BioMart.plantsmart22,
 	TxDb.Dmelanogaster.UCSC.dm3.ensGene,
-	TxDb.Hsapiens.UCSC.hg19.knownGene,
+	TxDb.Hsapiens.UCSC.hg38.knownGene,
 	TxDb.Mmusculus.UCSC.mm10.knownGene,
 	RUnit, digest, knitr, rmarkdown, BiocStyle
 VignetteBuilder: knitr

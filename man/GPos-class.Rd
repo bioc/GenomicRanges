@@ -336,15 +336,15 @@ gpos4
 ## GPos derivative cannot exceed '.Machine$integer.max' (i.e. 2^31 on
 ## most platforms) so the above only works with a "small" genome.
 ## For example it doesn't work with the Human genome:
-library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+library(TxDb.Hsapiens.UCSC.hg38.knownGene)
 \dontrun{
-  GPos(seqinfo(TxDb.Hsapiens.UCSC.hg19.knownGene))  # error!
+  GPos(seqinfo(TxDb.Hsapiens.UCSC.hg38.knownGene))  # error!
 }
 
 ## You can use isSmallGenome() to check upfront whether the genome is
 ## "small" or not.
 isSmallGenome(genome)  # TRUE
-isSmallGenome(TxDb.Hsapiens.UCSC.hg19.knownGene)  # FALSE
+isSmallGenome(TxDb.Hsapiens.UCSC.hg38.knownGene)  # FALSE
 
 ## ---------------------------------------------------------------------
 ## MEMORY USAGE
