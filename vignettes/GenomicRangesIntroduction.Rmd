@@ -131,7 +131,7 @@ length(gr)
 
 ## Splitting and combining *GRanges* objects
 
-*GRanges* objects can be devided into groups using the
+*GRanges* objects can be divided into groups using the
 `split` method. This produces a *GRangesList* object,
 a class that will be discussed in detail in the next section.
 
