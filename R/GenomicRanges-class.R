@@ -268,18 +268,20 @@ setMethod("as.data.frame", "GenomicRanges",
             row.names <- names(x)
         if (!is.null(names(x)))
             names(x) <- NULL
-        mcols_df <- as.data.frame(mcols(x, use.names=FALSE), ...)
-        if (length(extraColumnSlotNames(x)) > 0L)
-            mcols_df <- cbind(as.data.frame(extraColumnSlotsAsDF(x), ...),
-                              mcols_df)
-        data.frame(seqnames=as.factor(seqnames(x)),
-                   start=start(x),
-                   end=end(x),
-                   width=width(x),
-                   strand=as.factor(strand(x)),
-                   mcols_df,
-                   row.names=row.names,
-                   stringsAsFactors=FALSE)
+        ans <- data.frame(seqnames=as.factor(seqnames(x)),
+                          start=start(x),
+                          end=end(x),
+                          width=width(x),
+                          strand=as.factor(strand(x)),
+                          row.names=row.names,
+                          stringsAsFactors=FALSE)
+        x_mcols <- mcols(x, use.names=FALSE)
+        ans <- cbind(ans, as.data.frame(x_mcols, optional=optional, ...))
+        if (length(extraColumnSlotNames(x)) > 0L) {
+            x_xcols <- extraColumnSlotsAsDF(x)
+            ans <- cbind(ans, as.data.frame(x_xcols, optional=optional, ...))
+        }
+        ans
     }
 )
 
