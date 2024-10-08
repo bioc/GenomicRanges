@@ -301,15 +301,13 @@ setMethod("coerce", c("StitchedGPos", "GRanges"), from_GPos_to_GRanges)
 ### "width" column.
 .as.data.frame.GPos <- function(x, row.names=NULL, optional=FALSE)
 {
-    if (!identical(optional, FALSE))
-        warning(wmsg("'optional' argument was ignored"))
+    ans <- data.frame(seqnames=as.factor(seqnames(x)),
+                      pos=pos(x),
+                      strand=as.factor(strand(x)),
+                      row.names=row.names,
+                      stringsAsFactors=FALSE)
     x_mcols <- mcols(x, use.names=FALSE)  # always a DataFrame parallel to 'x'
-    data.frame(seqnames=as.factor(seqnames(x)),
-               pos=pos(x),
-               strand=as.factor(strand(x)),
-               as.data.frame(x_mcols),
-               row.names=row.names,
-               stringsAsFactors=FALSE)
+    cbind(ans, as.data.frame(x_mcols, optional=optional))
 }
 as.data.frame.GPos <- function(x, row.names=NULL, optional=FALSE, ...)
     .as.data.frame.GPos(x, row.names=NULL, optional=FALSE, ...)
