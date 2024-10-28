@@ -1,3 +1,18 @@
+CHANGES IN VERSION 1.58.0
+-------------------------
+
+SIGNIFICANT USER-VISIBLE CHANGES
+
+    o Use hg38 instead of hg19 in vignettes and examples. See commit 57af07f
+      for the details.
+
+BUG FIXES
+
+    o The as.data.frame() methods for GenomicRanges and GPos objects
+      now obey the 'optional' argument.
+      See https://github.com/Bioconductor/GenomicRanges/issues/86
+
+
 CHANGES IN VERSION 1.56.0
 -------------------------
 
